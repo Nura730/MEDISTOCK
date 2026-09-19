@@ -4,10 +4,10 @@
   "description": "MediStock API — Medicine availability in government pharmacies",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
     "dev": "node --watch index.js",
-    "seed": "node seed/seedData.js"
-  },
+    "start": "node index.js",
+    "seed": "node seed.js"
+  }
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
