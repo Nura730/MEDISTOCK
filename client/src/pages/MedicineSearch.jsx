@@ -1,25 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, X, Filter, Pill, Building2, ChevronRight } from 'lucide-react';
+import { Search, X, Pill, Building2, ChevronRight, Filter, AlertCircle } from 'lucide-react';
 import api from '../services/api';
-import { useDebounce, getStatusColor } from '../hooks/useHelpers';
+import { useDebounce } from '../hooks/useHelpers';
+import { CardSkeleton } from '../components/ui/Skeleton';
+import EmptyState from '../components/ui/EmptyState';
 
-const categories = ['All', 'Analgesic', 'Antibiotic', 'Antihypertensive', 'Antidiabetic', 'Antihistamine', 'Antacid', 'Respiratory', 'Antiplatelet', 'Rehydration', 'Supplement'];
-
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl border border-gray-100 p-5 animate-pulse">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-gray-100 rounded-xl shrink-0"></div>
-        <div className="flex-1">
-          <div className="h-5 bg-gray-100 rounded w-3/4 mb-2"></div>
-          <div className="h-4 bg-gray-100 rounded w-1/2 mb-3"></div>
-          <div className="h-4 bg-gray-100 rounded w-1/3"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const categories = [
+  'All',
+  'Analgesic',
+  'Antibiotic',
+  'Antihypertensive',
+  'Antidiabetic',
+  'Antihistamine',
+  'Antacid',
+  'Respiratory',
+  'Antiplatelet',
+  'Rehydration',
+  'Supplement'
+];
 
 export default function MedicineSearch() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,7 +36,7 @@ export default function MedicineSearch() {
         if (debouncedQuery) params.search = debouncedQuery;
         if (category !== 'All') params.category = category;
         const { data } = await api.get('/medicines', { params });
-        setMedicines(data.data);
+        setMedicines(data.data || []);
       } catch (err) {
         console.error('Search error:', err);
         setMedicines([]);
@@ -57,110 +56,163 @@ export default function MedicineSearch() {
   }, [debouncedQuery]);
 
   return (
-    <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Find Medicine</h1>
-        <p className="text-gray-500">Search by medicine name, generic name, or category</p>
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+          Find Essential Medicines
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Real-time stock verification across registered district government pharmacies.
+        </p>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6">
-        <div className="flex items-center px-4 py-3">
-          <Search className="w-5 h-5 text-gray-400 shrink-0" />
+      {/* Search Bar & Filter Bar */}
+      <div className="space-y-3">
+        <div className="relative flex items-center bg-white border border-slate-200 focus-within:border-blue-600 focus-within:ring-3 focus-within:ring-blue-100 rounded-xl shadow-xs transition-all">
+          <div className="pl-3.5 pr-2 pointer-events-none text-slate-400">
+            <Search className="w-5 h-5" />
+          </div>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search medicines... (e.g., Paracetamol 500mg)"
-            className="flex-1 px-3 py-1 bg-transparent border-none outline-none text-gray-900 placeholder-gray-400"
+            placeholder="Search by brand name or generic formula (e.g. Paracetamol, Metformin)..."
+            className="w-full py-3 px-1 text-sm sm:text-base text-slate-900 placeholder:text-slate-400 bg-transparent outline-none border-none"
             autoFocus
-            aria-label="Search medicines"
+            aria-label="Search medicine name"
           />
           {query && (
-            <button onClick={() => setQuery('')} className="p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 cursor-pointer" aria-label="Clear search">
+            <button
+              onClick={() => setQuery('')}
+              className="mr-3 p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+              aria-label="Clear search"
+            >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
+
+        {/* Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 scrollbar-none">
+          <span className="text-xs font-semibold text-slate-400 pl-1 pr-1 flex items-center gap-1 shrink-0">
+            <Filter className="w-3 h-3" /> Class:
+          </span>
+          {categories.map((cat) => {
+            const isSelected = category === cat;
+            return (
+              <button
+                key={cat}
+                onClick={() => setCategory(cat)}
+                className={`px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                  isSelected
+                    ? 'bg-slate-900 text-white font-semibold shadow-2xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
-        {categories.map((cat) => (
+      {/* Search Results Summary */}
+      <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-100">
+        <span>
+          {loading ? 'Searching database...' : `${medicines.length} medicine formulation${medicines.length === 1 ? '' : 's'} found`}
+        </span>
+        {(query || category !== 'All') && (
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
-              category === cat
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600'
-            }`}
+            onClick={() => {
+              setQuery('');
+              setCategory('All');
+            }}
+            className="text-teal-700 hover:underline font-medium cursor-pointer"
           >
-            {cat}
+            Reset filters
           </button>
-        ))}
+        )}
       </div>
 
-      {/* Results */}
+      {/* Results Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[1,2,3,4,5,6].map(i => <SkeletonCard key={i} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
       ) : medicines.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Pill className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No medicines found</h3>
-          <p className="text-gray-500 mb-4">Try searching with a different name or category</p>
-          {query && (
-            <button onClick={() => { setQuery(''); setCategory('All'); }} className="text-blue-600 hover:text-blue-700 text-sm font-medium cursor-pointer">
-              Clear filters
+        <EmptyState
+          icon={Pill}
+          title="No matching medicines found"
+          description="We couldn't locate any records matching your search criteria in this district."
+          action={
+            <button
+              onClick={() => {
+                setQuery('');
+                setCategory('All');
+              }}
+              className="px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              Show All Available Medicines
             </button>
-          )}
-        </div>
+          }
+        />
       ) : (
-        <>
-          <p className="text-sm text-gray-500 mb-4">{medicines.length} medicine{medicines.length !== 1 ? 's' : ''} found</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {medicines.map((med, idx) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {medicines.map((med) => {
+            const hasPharmacies = med.availablePharmacies > 0;
+            return (
               <Link
-                to={`/medicine/${med._id}`}
                 key={med._id}
-                className="bg-white rounded-xl border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all group animate-fade-in"
-                style={{ animationDelay: `${idx * 40}ms` }}
+                to={`/medicine/${med._id}`}
+                className="bg-white rounded-xl border border-slate-200 p-5 hover:border-slate-300 hover:shadow-xs transition-all flex flex-col justify-between group"
               >
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-                    <Pill className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors truncate">{med.name}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">Generic: {med.genericName}</p>
-                    <div className="flex items-center gap-3 mt-3 flex-wrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                        {med.category}
-                      </span>
-                      {med.strength && (
-                        <span className="text-xs text-gray-400">{med.strength}</span>
-                      )}
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0 group-hover:bg-teal-100 transition-colors">
+                      <Pill className="w-5 h-5 text-teal-700" />
                     </div>
-                    <div className="flex items-center gap-1.5 mt-3 text-sm">
-                      <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                      <span className={med.availablePharmacies > 0 ? 'text-emerald-700 font-medium' : 'text-red-600 font-medium'}>
-                        {med.availablePharmacies > 0
-                          ? `Available at ${med.availablePharmacies} ${med.availablePharmacies === 1 ? 'pharmacy' : 'pharmacies'}`
-                          : 'Currently unavailable'}
-                      </span>
-                    </div>
+                    <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                      {med.category}
+                    </span>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-blue-500 transition-colors mt-1 shrink-0" />
+
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900 group-hover:text-blue-700 transition-colors leading-tight">
+                      {med.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-1">
+                      Generic: <span className="text-slate-700 font-medium">{med.genericName}</span>
+                    </p>
+                    {med.strength && (
+                      <p className="text-[11px] text-slate-400 mt-0.5">Strength: {med.strength}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                    <span
+                      className={`font-semibold ${
+                        hasPharmacies ? 'text-emerald-700' : 'text-rose-700'
+                      }`}
+                    >
+                      {hasPharmacies
+                        ? `In stock at ${med.availablePharmacies} ${
+                            med.availablePharmacies === 1 ? 'pharmacy' : 'pharmacies'
+                          }`
+                        : 'Currently Out of Stock'}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-600 transition-colors" />
                 </div>
               </Link>
-            ))}
-          </div>
-        </>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -30,7 +30,7 @@ import ShortageAnalytics from './pages/admin/ShortageAnalytics';
 
 function AppLayout({ children, showFooter = true }) {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
       <Navbar />
       <main className="flex-1">{children}</main>
       {showFooter && <Footer />}
@@ -46,8 +46,15 @@ export default function App() {
           position="top-right"
           toastOptions={{
             duration: 4000,
-            style: { fontFamily: 'Inter, sans-serif', fontSize: '14px', borderRadius: '10px', padding: '12px 16px' },
-            success: { iconTheme: { primary: '#059669', secondary: '#fff' } },
+            style: {
+              fontFamily: 'Inter, sans-serif',
+              fontSize: '13px',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 12px -2px rgba(15, 23, 42, 0.08)'
+            },
+            success: { iconTheme: { primary: '#0d9488', secondary: '#fff' } },
             error: { iconTheme: { primary: '#dc2626', secondary: '#fff' } }
           }}
         />

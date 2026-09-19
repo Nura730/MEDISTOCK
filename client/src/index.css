@@ -1,74 +1,86 @@
-@import "tailwindcss";
 @import "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap";
+@import "tailwindcss";
 
-/* ===== Design System Tokens ===== */
+/* ===== MediStock Design System Tokens ===== */
 :root {
-  /* Primary — Healthcare Blue */
-  --color-primary-50: #eff6ff;
-  --color-primary-100: #dbeafe;
-  --color-primary-200: #bfdbfe;
-  --color-primary-300: #93c5fd;
-  --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6;
-  --color-primary-600: #2563eb;
-  --color-primary-700: #1d4ed8;
-  --color-primary-800: #1e40af;
-  --color-primary-900: #1e3a5f;
+  /* Brand Primary — Deep Authority Navy */
+  --color-brand-primary: #0f172a;
+  --color-brand-secondary: #1e293b;
+  --color-brand-accent: #2563eb;
+  --color-brand-teal: #0d9488;
+  --color-brand-teal-light: #f0fdfa;
+  --color-brand-teal-border: #ccfbf1;
 
-  /* Status Colors */
-  --color-success: #059669;
-  --color-success-light: #d1fae5;
-  --color-success-bg: #ecfdf5;
-  --color-warning: #d97706;
-  --color-warning-light: #fef3c7;
-  --color-warning-bg: #fffbeb;
-  --color-danger: #dc2626;
-  --color-danger-light: #fee2e2;
-  --color-danger-bg: #fef2f2;
-  --color-muted: #6b7280;
-  --color-muted-light: #f3f4f6;
+  /* Surfaces & Backgrounds */
+  --color-bg-canvas: #f8fafc;
+  --color-bg-surface: #ffffff;
+  --color-bg-subtle: #f1f5f9;
+  --color-border-subtle: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Text Hierarchy */
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted: #64748b;
+  --color-text-inverse: #ffffff;
+
+  /* Status Colors — Accessible Triple-Indicator System */
+  --status-in-stock-text: #065f46;
+  --status-in-stock-bg: #ecfdf5;
+  --status-in-stock-border: #a7f3d0;
+  --status-in-stock-dot: #10b981;
+
+  --status-low-stock-text: #92400e;
+  --status-low-stock-bg: #fffbeb;
+  --status-low-stock-border: #fde68a;
+  --status-low-stock-dot: #f59e0b;
+
+  --status-out-of-stock-text: #991b1b;
+  --status-out-of-stock-bg: #fef2f2;
+  --status-out-of-stock-border: #fecaca;
+  --status-out-of-stock-dot: #ef4444;
 
   /* Typography */
-  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  /* Refined Elevation Shadows */
+  --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.04), 0 1px 2px -1px rgb(15 23 42 / 0.04);
+  --shadow-card-hover: 0 4px 12px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.04);
+  --shadow-dropdown: 0 10px 25px -5px rgb(15 23 42 / 0.1), 0 8px 10px -6px rgb(15 23 42 / 0.05);
 
-  /* Radius */
+  /* Proportional Radii */
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
 }
 
-/* ===== Base Styles ===== */
+/* ===== Base Document Styling ===== */
 * {
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
 }
 
 html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-bg-canvas);
+  color: var(--color-text-primary);
 }
 
 body {
-  font-family: var(--font-family);
-  color: #1f2937;
-  background-color: #f8fafc;
-  line-height: 1.6;
+  font-family: var(--font-sans);
+  background-color: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  margin: 0;
+  padding: 0;
 }
 
-/* ===== Focus Styles for Accessibility ===== */
+/* ===== Accessibility & Focus Visibility ===== */
 :focus-visible {
-  outline: 2px solid var(--color-primary-500);
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 button:focus-visible,
@@ -76,11 +88,11 @@ a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid var(--color-primary-500);
+  outline: 2px solid #2563eb;
   outline-offset: 2px;
 }
 
-/* ===== Scrollbar ===== */
+/* ===== Elegant Scrollbars ===== */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -90,75 +102,52 @@ textarea:focus-visible {
 }
 ::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 3px;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
 
-/* ===== Animations ===== */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes slideInRight {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
+/* ===== Shimmer Skeleton Animation ===== */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.4s ease-out forwards;
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.3s ease-out forwards;
-}
-
-/* ===== Skeleton Loader ===== */
-.skeleton {
+.skeleton-shimmer {
   background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
   background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-  border-radius: var(--radius-md);
+  animation: shimmer 1.6s infinite ease-in-out;
 }
 
-/* ===== Leaflet Fixes ===== */
+/* ===== Micro-Animations ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSubtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-subtle {
+  animation: pulseSubtle 2s infinite ease-in-out;
+}
+
+/* ===== Leaflet Map Integration ===== */
 .leaflet-container {
-  font-family: var(--font-family) !important;
-  border-radius: var(--radius-lg);
+  font-family: var(--font-sans) !important;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-subtle);
 }
 
 .leaflet-popup-content-wrapper {
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-lg) !important;
-}
-
-/* ===== Status Badge Styles ===== */
-.status-in-stock { color: var(--color-success); background: var(--color-success-bg); }
-.status-low-stock { color: var(--color-warning); background: var(--color-warning-bg); }
-.status-out-of-stock { color: var(--color-danger); background: var(--color-danger-bg); }
-
-/* ===== Page Transition ===== */
-.page-enter {
-  animation: fadeIn 0.25s ease-out;
+  border-radius: 10px !important;
+  box-shadow: var(--shadow-dropdown) !important;
+  border: 1px solid #e2e8f0;
 }

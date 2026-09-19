@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, BellOff, Clock, Pill, Building2, Trash2, CheckCircle } from 'lucide-react';
+import { Bell, BellOff, Clock, Pill, Building2, Trash2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { getSocket } from '../../services/socket';
-import { useSocket, timeAgo, getStatusColor } from '../../hooks/useHelpers';
+import { useSocket, timeAgo } from '../../hooks/useHelpers';
 import toast from 'react-hot-toast';
+import EmptyState from '../../components/ui/EmptyState';
+import { CardSkeleton } from '../../components/ui/Skeleton';
 
 export default function MyAlerts() {
   const { user } = useAuth();
@@ -16,7 +18,7 @@ export default function MyAlerts() {
   const fetchAlerts = async () => {
     try {
       const { data } = await api.get('/alerts');
-      setAlerts(data.data);
+      setAlerts(data.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -24,75 +26,116 @@ export default function MyAlerts() {
     }
   };
 
-  useEffect(() => { fetchAlerts(); }, []);
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
 
   useSocket(socket, user ? `alert:available:${user._id}` : 'noop', (data) => {
-    toast.success(`${data.medicineName} is now available at ${data.pharmacyName}!`, { duration: 6000, icon: '🔔' });
+    toast.success(`${data.medicineName} is now available at ${data.pharmacyName}!`, {
+      duration: 6000,
+      icon: '🔔'
+    });
     fetchAlerts();
   });
 
   const handleDelete = async (alertId) => {
     try {
       await api.delete(`/alerts/${alertId}`);
-      setAlerts(prev => prev.filter(a => a._id !== alertId));
+      setAlerts((prev) => prev.filter((a) => a._id !== alertId));
       toast.success('Alert removed');
     } catch (err) {
       toast.error('Failed to remove alert');
     }
   };
 
-  const pendingAlerts = alerts.filter(a => a.status === 'pending');
-  const notifiedAlerts = alerts.filter(a => a.status === 'notified');
+  const pendingAlerts = alerts.filter((a) => a.status === 'pending');
+  const notifiedAlerts = alerts.filter((a) => a.status === 'notified');
 
   return (
-    <div className="page-enter max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">My Availability Alerts</h1>
-        <p className="text-gray-500 mt-1">Get notified when out-of-stock medicines become available</p>
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          My Medicine Stock Alerts
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Automated notifications sent when out-of-stock medications are replenished by hospital pharmacy staff.
+        </p>
       </div>
 
       {loading ? (
-        <div className="space-y-4">{[1,2,3].map(i => <div key={i} className="h-24 bg-gray-100 rounded-xl animate-pulse"></div>)}</div>
-      ) : alerts.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-          <BellOff className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No alerts yet</h3>
-          <p className="text-gray-500 mb-6">Search for a medicine and click "Notify Me" on out-of-stock items</p>
-          <Link to="/search" className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors inline-flex items-center gap-2">
-            Find Medicine
-          </Link>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
+      ) : alerts.length === 0 ? (
+        <EmptyState
+          icon={BellOff}
+          title="No active stock alerts"
+          description="You haven't requested notifications for any medicines. When an essential drug is out of stock, click 'Notify Me' on the medicine page to monitor it."
+          action={
+            <Link
+              to="/search"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800"
+            >
+              <span>Explore Medicine Formulary</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          }
+        />
       ) : (
         <div className="space-y-6">
-          {/* Pending */}
+          {/* Active / Pending Alerts */}
           {pendingAlerts.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Bell className="w-4 h-4 text-amber-500" /> Active Alerts ({pendingAlerts.length})
-              </h2>
-              <div className="space-y-3">
-                {pendingAlerts.map(alert => (
-                  <div key={alert._id} className="bg-white rounded-xl border border-amber-200 p-5 flex flex-col sm:flex-row sm:items-center gap-4 animate-fade-in">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Pill className="w-4 h-4 text-blue-600" />
-                        <Link to={`/medicine/${alert.medicineId?._id}`} className="font-semibold text-gray-900 hover:text-blue-600">
-                          {alert.medicineId?.name || 'Unknown'}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Waiting for Restock ({pendingAlerts.length})</span>
+                </h2>
+              </div>
+
+              <div className="space-y-2.5">
+                {pendingAlerts.map((alert) => (
+                  <div
+                    key={alert._id}
+                    className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Pill className="w-4 h-4 text-teal-600 shrink-0" />
+                        <Link
+                          to={`/medicine/${alert.medicineId?._id}`}
+                          className="font-bold text-sm text-slate-900 hover:text-blue-700 transition-colors"
+                        >
+                          {alert.medicineId?.name || 'Essential Medicine'}
                         </Link>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <Building2 className="w-3.5 h-3.5" />
-                        <span>{alert.pharmacyId?.name || 'Unknown'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-400 mt-2">
-                        <Clock className="w-3 h-3" /> Created {timeAgo(alert.createdAt)}
-                      </div>
+
+                      <p className="text-xs text-slate-500 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Target Facility: <strong>{alert.pharmacyId?.name || 'Local Pharmacy'}</strong></span>
+                      </p>
+
+                      <p className="text-[11px] text-slate-400 flex items-center gap-1 pt-0.5">
+                        <Clock className="w-3 h-3" />
+                        <span>Alert initiated {timeAgo(alert.createdAt)}</span>
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1.5 bg-amber-50 text-amber-700 text-xs font-medium rounded-lg border border-amber-200">
-                        Waiting
+
+                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        <span>Monitoring Stock</span>
                       </span>
-                      <button onClick={() => handleDelete(alert._id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" aria-label="Delete alert">
+
+                      <button
+                        onClick={() => handleDelete(alert._id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Cancel alert"
+                        aria-label="Cancel alert"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -102,34 +145,54 @@ export default function MyAlerts() {
             </div>
           )}
 
-          {/* Notified */}
+          {/* Fulfilled / Notified Alerts */}
           {notifiedAlerts.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-emerald-500" /> Available ({notifiedAlerts.length})
+            <div className="space-y-3 pt-2">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Replenished & Available Now ({notifiedAlerts.length})</span>
               </h2>
-              <div className="space-y-3">
-                {notifiedAlerts.map(alert => (
-                  <div key={alert._id} className="bg-emerald-50 rounded-xl border border-emerald-200 p-5 flex flex-col sm:flex-row sm:items-center gap-4 animate-fade-in">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Pill className="w-4 h-4 text-emerald-600" />
-                        <Link to={`/medicine/${alert.medicineId?._id}`} className="font-semibold text-emerald-800 hover:text-emerald-900">
-                          {alert.medicineId?.name || 'Unknown'}
+
+              <div className="space-y-2.5">
+                {notifiedAlerts.map((alert) => (
+                  <div
+                    key={alert._id}
+                    className="bg-emerald-50/60 rounded-xl border border-emerald-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Pill className="w-4 h-4 text-emerald-700 shrink-0" />
+                        <Link
+                          to={`/medicine/${alert.medicineId?._id}`}
+                          className="font-bold text-sm text-emerald-950 hover:underline"
+                        >
+                          {alert.medicineId?.name || 'Medicine'}
                         </Link>
                       </div>
-                      <p className="text-sm text-emerald-700">
-                        Now available at {alert.pharmacyId?.name}
+
+                      <p className="text-xs text-emerald-800">
+                        Available at: <strong>{alert.pharmacyId?.name}</strong>
                       </p>
-                      {alert.notifiedAt && (
-                        <p className="text-xs text-emerald-600 mt-1">Available since {timeAgo(alert.notifiedAt)}</p>
-                      )}
+
+                      <p className="text-[11px] text-emerald-600">
+                        Stock update received {alert.notifiedAt ? timeAgo(alert.notifiedAt) : 'recently'}
+                      </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Link to={`/medicine/${alert.medicineId?._id}`} className="px-3.5 py-1.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700">
-                        View
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Link
+                        to={`/medicine/${alert.medicineId?._id}`}
+                        className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-xs rounded-lg transition-colors"
+                      >
+                        View Stock
                       </Link>
-                      <button onClick={() => handleDelete(alert._id)} className="p-2 text-emerald-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer" aria-label="Remove alert">
+
+                      <button
+                        onClick={() => handleDelete(alert._id)}
+                        className="p-1.5 text-emerald-600 hover:text-rose-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                        title="Dismiss notification"
+                        aria-label="Dismiss notification"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

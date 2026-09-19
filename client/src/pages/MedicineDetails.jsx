@@ -1,17 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Pill, MapPin, Clock, Bell, CheckCircle, AlertTriangle, XCircle, Building2, ExternalLink, ArrowLeft } from 'lucide-react';
+import { Pill, MapPin, Clock, Bell, Building2, ArrowLeft, ShieldCheck, Check, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { getSocket } from '../services/socket';
-import { useSocket, getStatusColor, getStatusDot, getApproxStock, timeAgo, calculateDistance, DEFAULT_LOCATION } from '../hooks/useHelpers';
-
-function StatusIcon({ status }) {
-  if (status === 'In Stock') return <CheckCircle className="w-4 h-4 text-emerald-600" />;
-  if (status === 'Low Stock') return <AlertTriangle className="w-4 h-4 text-amber-600" />;
-  return <XCircle className="w-4 h-4 text-red-600" />;
-}
+import { useSocket, getApproxStock, timeAgo, calculateDistance, DEFAULT_LOCATION } from '../hooks/useHelpers';
+import StatusBadge from '../components/ui/StatusBadge';
+import { CardSkeleton } from '../components/ui/Skeleton';
+import EmptyState from '../components/ui/EmptyState';
 
 export default function MedicineDetails() {
   const { id } = useParams();
@@ -32,10 +29,15 @@ export default function MedicineDetails() {
       ]);
       setMedicine(medRes.data.data);
 
-      // Add distance and sort
-      const withDistance = availRes.data.data.map(item => ({
+      // Add distance and sort: available first, then closest
+      const withDistance = (availRes.data.data || []).map((item) => ({
         ...item,
-        distance: calculateDistance(DEFAULT_LOCATION.lat, DEFAULT_LOCATION.lng, item.pharmacy.latitude, item.pharmacy.longitude)
+        distance: calculateDistance(
+          DEFAULT_LOCATION.lat,
+          DEFAULT_LOCATION.lng,
+          item.pharmacy.latitude,
+          item.pharmacy.longitude
+        )
       }));
       withDistance.sort((a, b) => {
         if (a.quantity > 0 && b.quantity === 0) return -1;
@@ -44,10 +46,10 @@ export default function MedicineDetails() {
       });
       setAvailability(withDistance);
 
-      // Fetch user alerts
+      // Fetch user alerts if logged in
       if (isAuthenticated) {
         const alertRes = await api.get('/alerts');
-        setUserAlerts(alertRes.data.data.filter(a => a.medicineId?._id === id && a.status === 'pending'));
+        setUserAlerts((alertRes.data.data || []).filter((a) => a.medicineId?._id === id && a.status === 'pending'));
       }
     } catch (err) {
       console.error(err);
@@ -57,9 +59,11 @@ export default function MedicineDetails() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [id, isAuthenticated]);
+  useEffect(() => {
+    fetchData();
+  }, [id, isAuthenticated]);
 
-  // Real-time updates
+  // Real-time stock update
   useSocket(socket, 'inventory:updated', (data) => {
     if (data.medicineId?.toString() === id) {
       fetchData();
@@ -68,15 +72,21 @@ export default function MedicineDetails() {
 
   useSocket(socket, 'medicine:availabilityChanged', (data) => {
     if (data.medicineId?.toString() === id) {
-      toast.success(`${data.medicineName} is now available at ${data.pharmacyName}!`, { duration: 6000, icon: '🎉' });
+      toast.success(`${data.medicineName} is now available at ${data.pharmacyName}!`, {
+        duration: 6000,
+        icon: '🎉'
+      });
       fetchData();
     }
   });
 
-  // Listen for user-specific alert notifications
+  // User alert notification
   useSocket(socket, user ? `alert:available:${user._id}` : 'noop', (data) => {
     if (data.medicineId?.toString() === id) {
-      toast.success(`Good news! ${data.medicineName} is now available at ${data.pharmacyName}.`, { duration: 8000, icon: '🔔' });
+      toast.success(`Good news! ${data.medicineName} is now in stock at ${data.pharmacyName}.`, {
+        duration: 8000,
+        icon: '🔔'
+      });
       fetchData();
     }
   });
@@ -89,7 +99,7 @@ export default function MedicineDetails() {
     setAlertLoading(pharmacyId);
     try {
       await api.post('/alerts', { medicineId: id, pharmacyId, email: user.email });
-      toast.success('Availability alert created! You\'ll be notified when this medicine becomes available.');
+      toast.success("Availability alert created! You'll be notified when this medicine becomes available.");
       fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create alert');
@@ -98,16 +108,17 @@ export default function MedicineDetails() {
     }
   };
 
-  const hasAlertFor = (pharmacyId) => userAlerts.some(a => a.pharmacyId?._id === pharmacyId);
+  const hasAlertFor = (pharmacyId) => userAlerts.some((a) => a.pharmacyId?._id === pharmacyId);
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-100 rounded w-48 mb-4"></div>
-          <div className="h-8 bg-gray-100 rounded w-72 mb-2"></div>
-          <div className="h-5 bg-gray-100 rounded w-56 mb-8"></div>
-          <div className="grid gap-4">{[1,2,3].map(i => <div key={i} className="h-40 bg-gray-100 rounded-xl"></div>)}</div>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <div className="h-6 w-36 skeleton-shimmer rounded" />
+        <CardSkeleton />
+        <div className="space-y-4 pt-4">
+          {[1, 2, 3].map((i) => (
+            <CardSkeleton key={i} />
+          ))}
         </div>
       </div>
     );
@@ -116,123 +127,180 @@ export default function MedicineDetails() {
   if (!medicine) {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-        <Pill className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Medicine not found</h2>
-        <Link to="/search" className="text-blue-600 hover:text-blue-700 font-medium">← Back to search</Link>
+        <EmptyState
+          icon={Pill}
+          title="Medicine record not found"
+          description="The requested medicine could not be retrieved from the central database."
+          action={
+            <Link
+              to="/search"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-900 text-white text-xs font-medium rounded-lg hover:bg-slate-800"
+            >
+              <ArrowLeft className="w-4 h-4" /> Return to Medicine Search
+            </Link>
+          }
+        />
       </div>
     );
   }
 
-  const inStockCount = availability.filter(a => a.quantity > 0).length;
+  const inStockCount = availability.filter((a) => a.quantity > 0).length;
 
   return (
-    <div className="page-enter max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Back */}
-      <Link to="/search" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-blue-600 mb-6 transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to search
-      </Link>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Back Navigation */}
+      <div>
+        <Link
+          to="/search"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Search Results
+        </Link>
+      </div>
 
-      {/* Medicine Info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
-        <div className="flex items-start gap-4">
-          <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-            <Pill className="w-7 h-7 text-blue-600" />
+      {/* Medicine Overview Card */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row items-start gap-4">
+          <div className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+            <Pill className="w-6 h-6 text-teal-600" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{medicine.name}</h1>
-            <p className="text-gray-500 mt-1">Generic: {medicine.genericName}</p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">{medicine.category}</span>
-              {medicine.strength && <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{medicine.strength}</span>}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                {medicine.category}
+              </span>
+              {medicine.strength && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-50 text-teal-800 border border-teal-200">
+                  {medicine.strength}
+                </span>
+              )}
             </div>
-            {medicine.description && <p className="text-sm text-gray-500 mt-3">{medicine.description}</p>}
+
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
+              {medicine.name}
+            </h1>
+            <p className="text-sm text-slate-600 mt-1">
+              Generic Composition: <span className="font-semibold text-slate-800">{medicine.genericName}</span>
+            </p>
+
+            {medicine.description && (
+              <p className="text-xs sm:text-sm text-slate-500 mt-3 leading-relaxed border-t border-slate-100 pt-3">
+                {medicine.description}
+              </p>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Availability */}
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-semibold text-gray-900">
-          Pharmacy Availability
-          <span className="text-sm font-normal text-gray-500 ml-2">
-            ({inStockCount} of {availability.length} pharmacies)
-          </span>
-        </h2>
+      {/* Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2 border-b border-slate-200 pb-3">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900">Government Pharmacy Availability</h2>
+          <p className="text-xs text-slate-500">Sorted by live availability and distance from Kochi Central.</p>
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-semibold text-slate-700">
+          <span>In Stock at {inStockCount} of {availability.length} Pharmacies</span>
+        </div>
       </div>
 
+      {/* Availability List */}
       {availability.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-10 text-center">
-          <Building2 className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium">No pharmacies currently carry this medicine</p>
-        </div>
+        <EmptyState
+          icon={Building2}
+          title="No registered pharmacy inventory records"
+          description="There are currently no government centres stocking this formulation in the active pilot district."
+        />
       ) : (
-        <div className="grid gap-4">
-          {availability.map((item, idx) => (
-            <div
-              key={item._id}
-              className={`bg-white rounded-xl border p-5 sm:p-6 transition-all hover:shadow-md animate-fade-in ${
-                item.quantity > 0 ? 'border-gray-200' : 'border-gray-100 opacity-80'
-              }`}
-              style={{ animationDelay: `${idx * 50}ms` }}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
-                      <Building2 className="w-5 h-5 text-gray-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-gray-900">{item.pharmacy.name}</h3>
-                      <p className="text-sm text-gray-500 mt-0.5">{item.pharmacy.address}</p>
+        <div className="space-y-3.5">
+          {availability.map((item) => {
+            const hasStock = item.quantity > 0;
+            const hasAlert = hasAlertFor(item.pharmacy._id);
 
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm text-gray-500">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" /> {item.distance.toFixed(1)} km
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" /> {item.pharmacy.openingTime} – {item.pharmacy.closingTime}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className="flex flex-col items-start sm:items-end gap-3 sm:min-w-[180px]">
-                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium ${getStatusColor(item.status)}`}>
-                    <StatusIcon status={item.status} />
-                    <span>{item.status}</span>
-                  </div>
-                  <div className="text-sm text-gray-500">
-                    <span className="font-medium">{getApproxStock(item.quantity)}</span>
-                    <span className="mx-1.5">·</span>
-                    <span>{timeAgo(item.lastUpdated)}</span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Link to={`/pharmacy/${item.pharmacy._id}`} className="px-3.5 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
-                      View Pharmacy
-                    </Link>
-                    {item.quantity === 0 && !hasAlertFor(item.pharmacy._id) && (
-                      <button
-                        onClick={() => handleCreateAlert(item.pharmacy._id)}
-                        disabled={alertLoading === item.pharmacy._id}
-                        className="px-3.5 py-1.5 text-sm font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <Bell className="w-3.5 h-3.5" />
-                        {alertLoading === item.pharmacy._id ? 'Setting...' : 'Notify Me'}
-                      </button>
-                    )}
-                    {hasAlertFor(item.pharmacy._id) && (
-                      <span className="px-3.5 py-1.5 text-sm font-medium text-emerald-700 bg-emerald-50 rounded-lg flex items-center gap-1.5">
-                        <Bell className="w-3.5 h-3.5" /> Alert Active
+            return (
+              <div
+                key={item._id}
+                className={`bg-white rounded-xl border p-5 sm:p-6 transition-all shadow-xs ${
+                  hasStock ? 'border-slate-200 hover:border-slate-300' : 'border-slate-200/60 bg-slate-50/40'
+                }`}
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+                  {/* Pharmacy Information */}
+                  <div className="space-y-2 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-bold text-slate-900 leading-tight">
+                        {item.pharmacy.name}
+                      </h3>
+                      <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full">
+                        <ShieldCheck className="w-3 h-3 text-teal-600" /> Government
                       </span>
-                    )}
+                    </div>
+
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span>{item.pharmacy.address}, {item.pharmacy.city}</span>
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-1">
+                      <span className="font-semibold text-slate-700">
+                        {item.distance ? `${item.distance.toFixed(1)} km away` : 'Proximity calculated'}
+                      </span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-slate-400" />
+                        <span>{item.pharmacy.openingTime} – {item.pharmacy.closingTime}</span>
+                      </span>
+                      {item.pharmacy.phone && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{item.pharmacy.phone}</span>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Stock Status & Actions */}
+                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
+                    <div className="flex flex-col md:items-end">
+                      <StatusBadge status={item.status} size="sm" />
+                      <span className="text-[11px] text-slate-400 mt-1">
+                        {getApproxStock(item.quantity)} • updated {timeAgo(item.lastUpdated)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/pharmacy/${item.pharmacy._id}`}
+                        className="px-3 py-1.5 text-xs font-medium text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      >
+                        Pharmacy Profile
+                      </Link>
+
+                      {!hasStock && !hasAlert && (
+                        <button
+                          onClick={() => handleCreateAlert(item.pharmacy._id)}
+                          disabled={alertLoading === item.pharmacy._id}
+                          className="px-3 py-1.5 text-xs font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          <Bell className="w-3.5 h-3.5" />
+                          <span>{alertLoading === item.pharmacy._id ? 'Setting...' : 'Notify When In Stock'}</span>
+                        </button>
+                      )}
+
+                      {hasAlert && (
+                        <span className="px-3 py-1.5 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5 text-emerald-600" /> Alert Set
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
